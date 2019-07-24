@@ -20,10 +20,12 @@ barrier::barrier(int nrovers)
     srand(time(NULL));
     // Set Parameters
     // Experimental params
-    nh_private_.param<int>("nrovers",barrier::nrovers,nrovers);
+    nh_private_.param<int>("nrovers",barrier::nrovers,nrovers); // ?? This might cause problems
     nh_private_.param<int>("F",barrier::F,2);
     nh_private_.param<int>("nbad",barrier::nbad,2);
     nh_private_.param<int>("ngood",barrier::ngood,2);
+    // Vector of rover numbers (e.g. [2,4,5] if you're using R2, R4, R5)
+    nh_private_.param<std::vector<double> >("rover_numbers_list", barrier::rover_numbers_list, std::vector<double>());
     barrier::indices_tot = new int[nrovers];
     barrier::indices_bad = new int[nbad];
     barrier::indices_good = new int[nrovers-nbad];
@@ -34,17 +36,18 @@ barrier::barrier(int nrovers)
         if(bob==0)  {
             barrier::indices_bad[0] = (rand()%nrovers)+1;
         }  else {
-            barrier""indices_bad[1] = (rand()%nrovers)+1;
+            barrier::indices_bad[1] = (rand()%nrovers)+1;
         }
         bob++;
         if(barrier::indices_bad[0]!=barrier::indices_bad[1] && bob>=1;)    {
             break;
         }
     }
-    int fred = 0;
+    int fred = 0; // Counter for making list of good agents
     // List all agents, and separately, list all non-malicious agents
     for(int i=0;i<nrovers;i++)    {
         barrier::indices_tot[i] = i+1;
+        // If the index corresponds to a good agent, add the index to indices_good
         if(barrier::indices_tot[i]!=barrier::indices_bad[0] && barrier::indices_tot[i]!=barrier::indices_bad[1])    {
             barrier::indices_good[fred] = barrier::indices_tot[i];
             fred++;
@@ -57,7 +60,7 @@ barrier::barrier(int nrovers)
     nh_private_.param<double>("radius",radius,1.5);
     nh_private_.param<double>("pi",pi,3.14159265359);
     barrier::circletheta = new double[nrovers];
-    zerosdouble(barrier::tauvector,nrovers,2);
+    zerosdouble(barrier::tauvector,nrovers,2); // From matrixfunctions.cpp
     for(int i=0;i<barrier::nrovers;i++) {
         barrier::circletheta[i] = i*(2*pi/barrier::nrovers);
         barrier::tauvector[i][0] = cos(barrier::circletheta[i]);
@@ -77,11 +80,14 @@ barrier::barrier(int nrovers)
     nh_private_.param<double>("t0", barrier::t0, ros::Time().toSec());
     
     // Set pubs and subs
-    // Publisher
-    barrier::b = 2;
-    barrier::b_str = std::to_string(barrier::b);
-    barrier::pub_topic = "/R"+barrier::b_str+"/cmd_vel";
-    barrier::pub = nh.advertise<geometry_msgs::Twist>(pub_topic, 10);
+    // Create vector of publishers
+
+    for (int i = 0; i < nrovers; i++)
+    {
+        std::string topic_name = "/R" + rover_numbers_list[i] + "/cmd_vel";
+        pub_vector.push_back(nh.advertise<geometry_msgs::Twist>(topic_name, 10));
+    }
+    
     barrier::pub_timer = nh.createTimer(ros::Duration(0.02), &barrier::barrierpublisher, this);
     barrier::dis_timer = nh.createTimer(ros::Duration(1), &IO_control_collision::disCallback, this);
     

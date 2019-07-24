@@ -62,6 +62,7 @@ private:
     int nrovers,F,nbad,ngood;
     int[2] badagents;
     int* indices_tot,indices_good,indices_bad;
+    std::vector<double> rover_numbers_list;
     
     // Path parameters
     double radius,pi;
